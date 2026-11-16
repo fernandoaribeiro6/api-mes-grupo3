@@ -1,0 +1,225 @@
+[
+  {
+    "id": "tab_industria40",
+    "type": "tab",
+    "label": "Planta SMART 4.0 - Telemetria & Controle",
+    "disabled": false,
+    "info": "Fluxo Node-RED para integração do CLP Siemens, WebSockets e APIs REST com a Aplicação Web Cloud da Indústria 4.0."
+  },
+  {
+    "id": "ws_listener_status",
+    "type": "websocket-listener",
+    "path": "/ws/machine/status",
+    "wholemsg": "false"
+  },
+  {
+    "id": "ws_listener_commands",
+    "type": "websocket-listener",
+    "path": "/ws/machine/commands",
+    "wholemsg": "false"
+  },
+  {
+    "id": "ws_in_commands",
+    "type": "websocket in",
+    "z": "tab_industria40",
+    "name": "WebSocket In: /ws/machine/commands",
+    "server": "ws_listener_commands",
+    "client": "",
+    "x": 170,
+    "y": 100,
+    "wires": [
+      [
+        "fn_parse_ws_command"
+      ]
+    ]
+  },
+  {
+    "id": "fn_parse_ws_command",
+    "type": "function",
+    "z": "tab_industria40",
+    "name": "Processa Comando Web (Start/Stop/Reset)",
+    "func": "var data = typeof msg.payload === \"string\" ? JSON.parse(msg.payload) : msg.payload;\nvar command = data.command || \"UNKNOWN\";\nvar speed = data.parameters ? data.parameters.conveyor_speed : 80;\nvar state = global.get(\"machineState\") || {\n    machine_state: \"STOPPED\",\n    buttons: { start_pressed: false, stop_pressed: true, emergency_active: false },\n    conveyor_speed_rpm: 0\n};\nif (command === \"START\" && !state.buttons.emergency_active) {\n    state.machine_state = \"RUNNING\";\n    state.buttons.start_pressed = true;\n    state.buttons.stop_pressed = false;\n    state.conveyor_speed_rpm = speed;\n} else if (command === \"STOP\") {\n    state.machine_state = \"STOPPED\";\n    state.buttons.start_pressed = false;\n    state.buttons.stop_pressed = true;\n    state.conveyor_speed_rpm = 0;\n} else if (command === \"EMERGENCY\") {\n    state.machine_state = \"EMERGENCY\";\n    state.buttons.start_pressed = false;\n    state.buttons.stop_pressed = false;\n    state.buttons.emergency_active = true;\n    state.conveyor_speed_rpm = 0;\n} else if (command === \"RESET\") {\n    state.machine_state = \"STOPPED\";\n    state.buttons.emergency_active = false;\n    state.buttons.stop_pressed = true;\n    state.conveyor_speed_rpm = 0;\n}\nglobal.set(\"machineState\", state);\nmsg.payload = JSON.stringify({\n    event: \"COMMAND_PROCESSED\",\n    command: command,\n    current_state: state,\n    timestamp: new Date().toISOString()\n});\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 480,
+    "y": 100,
+    "wires": [
+      [
+        "ws_out_status",
+        "debug_commands"
+      ]
+    ]
+  },
+  {
+    "id": "inject_heartbeat",
+    "type": "inject",
+    "z": "tab_industria40",
+    "name": "Clock 1Hz (Leitura CLP Siemens)",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "1",
+    "crontab": "",
+    "once": true,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "tick",
+    "payloadType": "str",
+    "x": 160,
+    "y": 220,
+    "wires": [
+      [
+        "fn_read_plc_state"
+      ]
+    ]
+  },
+  {
+    "id": "fn_read_plc_state",
+    "type": "function",
+    "z": "tab_industria40",
+    "name": "Simulador / Driver CLP Siemens S7",
+    "func": "var state = global.get(\"machineState\") || {\n    machine_state: \"STOPPED\",\n    buttons: {\n        start_pressed: false,\n        stop_pressed: true,\n        reset_pressed: false,\n        emergency_active: false\n    },\n    conveyor_speed_rpm: 0,\n    sensors: {\n        piece_detected: false,\n        qr_code: \"QR-2026-N2-001\"\n    }\n};\nif (state.machine_state === \"RUNNING\") {\n    var variation = (Math.random() * 4 - 2);\n    state.conveyor_speed_rpm = Math.max(70, Math.min(100, Math.round(85 + variation)));\n    state.sensors.piece_detected = Math.random() > 0.6;\n} else {\n    state.conveyor_speed_rpm = 0;\n    state.sensors.piece_detected = false;\n}\nvar telemetryPayload = {\n    timestamp: new Date().toISOString(),\n    machine_id: \"SMART-40-PLANTA-N2\",\n    machine_state: state.machine_state,\n    buttons: state.buttons,\n    conveyor_speed_rpm: state.conveyor_speed_rpm,\n    sensors: state.sensors\n};\nmsg.payload = JSON.stringify(telemetryPayload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 460,
+    "y": 220,
+    "wires": [
+      [
+        "ws_out_status"
+      ]
+    ]
+  },
+  {
+    "id": "ws_out_status",
+    "type": "websocket out",
+    "z": "tab_industria40",
+    "name": "WebSocket Out: /ws/machine/status",
+    "server": "ws_listener_status",
+    "client": "",
+    "x": 800,
+    "y": 160,
+    "wires": []
+  },
+  {
+    "id": "http_in_get_status",
+    "type": "http in",
+    "z": "tab_industria40",
+    "name": "GET /api/v1/telemetry/status",
+    "url": "/api/v1/telemetry/status",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 160,
+    "y": 340,
+    "wires": [
+      [
+        "fn_get_telemetry_response"
+      ]
+    ]
+  },
+  {
+    "id": "fn_get_telemetry_response",
+    "type": "function",
+    "z": "tab_industria40",
+    "name": "Formata Resposta HTTP Status",
+    "func": "var state = global.get(\"machineState\") || {\n    machine_state: \"STOPPED\",\n    buttons: { start_pressed: false, stop_pressed: true, emergency_active: false },\n    conveyor_speed_rpm: 0\n};\nmsg.statusCode = 200;\nmsg.headers = {\n    \"Content-Type\": \"application/json\",\n    \"Access-Control-Allow-Origin\": \"*\"\n};\nmsg.payload = {\n    status: \"SUCCESS\",\n    data: state,\n    timestamp: new Date().toISOString()\n};\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 460,
+    "y": 340,
+    "wires": [
+      [
+        "http_res_get_status"
+      ]
+    ]
+  },
+  {
+    "id": "http_res_get_status",
+    "type": "http response",
+    "z": "tab_industria40",
+    "name": "HTTP Response 200 OK",
+    "statusCode": "200",
+    "headers": {},
+    "x": 770,
+    "y": 340,
+    "wires": []
+  },
+  {
+    "id": "http_in_post_command",
+    "type": "http in",
+    "z": "tab_industria40",
+    "name": "POST /api/v1/telemetry/commands",
+    "url": "/api/v1/telemetry/commands",
+    "method": "post",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 180,
+    "y": 440,
+    "wires": [
+      [
+        "fn_post_command_process"
+      ]
+    ]
+  },
+  {
+    "id": "fn_post_command_process",
+    "type": "function",
+    "z": "tab_industria40",
+    "name": "Valida e Executa Comando REST",
+    "func": "var body = msg.payload || {};\nvar command = body.command;\nif (!command) {\n    msg.statusCode = 400;\n    msg.payload = { error: \"Campo 'command' é obrigatório (START, STOP, EMERGENCY, RESET)\" };\n    return msg;\n}\nvar state = global.get(\"machineState\") || {\n    machine_state: \"STOPPED\",\n    buttons: { start_pressed: false, stop_pressed: true, emergency_active: false },\n    conveyor_speed_rpm: 0\n};\nif (command === \"START\") {\n    state.machine_state = \"RUNNING\";\n    state.buttons.start_pressed = true;\n    state.buttons.stop_pressed = false;\n    state.conveyor_speed_rpm = body.parameters ? body.parameters.conveyor_speed || 85 : 85;\n} else if (command === \"STOP\") {\n    state.machine_state = \"STOPPED\";\n    state.buttons.start_pressed = true;\n    state.buttons.stop_pressed = true;\n    state.conveyor_speed_rpm = 0;\n} else if (command === \"EMERGENCY\") {\n    state.machine_state = \"EMERGENCY\";\n    state.buttons.emergency_active = true;\n    state.conveyor_speed_rpm = 0;\n} else if (command === \"RESET\") {\n    state.machine_state = \"STOPPED\";\n    state.buttons.emergency_active = false;\n    state.buttons.stop_pressed = true;\n    state.conveyor_speed_rpm = 0;\n}\nglobal.set(\"machineState\", state);\nmsg.statusCode = 200;\nmsg.headers = {\n    \"Content-Type\": \"application/json\",\n    \"Access-Control-Allow-Origin\": \"*\"\n};\nmsg.payload = {\n    message: \"Comando executado no CLP com sucesso\",\n    command: command,\n    new_state: state\n};\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 480,
+    "y": 440,
+    "wires": [
+      [
+        "http_res_post_command",
+        "fn_broadcast_trigger"
+      ]
+    ]
+  },
+  {
+    "id": "http_res_post_command",
+    "type": "http response",
+    "z": "tab_industria40",
+    "name": "HTTP Response REST",
+    "statusCode": "200",
+    "headers": {},
+    "x": 770,
+    "y": 440,
+    "wires": []
+  },
+  {
+    "id": "fn_broadcast_trigger",
+    "type": "function",
+    "z": "tab_industria40",
+    "name": "Notifica WebSockets sobre Alteração",
+    "func": "var state = global.get(\"machineState\");\nmsg.payload = JSON.stringify({\n    timestamp: new Date().toISOString(),\n    event: \"STATE_CHANGED_VIA_REST\",\n    machine_state: state.machine_state,\n    buttons: state.buttons,\n    conveyor_speed_rpm: state.conveyor_speed_rpm\n});\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 500,
+    "y": 500,
+    "wires": [
+      [
+        "ws_out_status"
+      ]
+    ]
+  },
+  {
+    "id": "debug_commands",
+    "type": "debug",
+    "z": "tab_industria40",
+    "name": "Log de Comandos do Sistema",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "x": 780,
+    "y": 100,
+    "wires": []
+  }
+]

@@ -1,0 +1,430 @@
+openapi: 3.0.3
+info:
+  title: Plataforma Web Indústria 4.0 (SMART 4.0) - API Unificada
+  description: |
+    Especificação OpenAPI/Swagger unificada para o Projeto Integrador de Aplicações Web na Nuvem.
+    Esta especificação consolida os endpoints desenvolvidos pelos 5 Grupos (Trios) para o controle,
+    telemetria e gestão da máquina de simulação 4.0.
+  version: 1.0.0
+  contact:
+    name: Equipe de Engenharia de Software / Automação
+    email: projeto40@universidade.edu.br
+
+servers:
+  - url: https://api.smart40-cloud.com/api/v1
+    description: Servidor de Produção na Nuvem (API Gateway - Grupo 5)
+  - url: http://localhost:8080/api/v1
+    description: Ambiente de Desenvolvimento Local (Mock Server / Prism)
+
+paths:
+
+  # ==========================================
+  # GRUPO 5: AUTENTICAÇÃO E IAM
+  # ==========================================
+  /auth/login:
+    post:
+      tags:
+        - "Grupo 5: Autenticação & IAM"
+      summary: Autenticação de Usuário e Emissão de Token JWT
+      description: Permite que operadores, engenheiros e gestores façam login na plataforma web.
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login realizado com sucesso. Retorna o token JWT e dados do usuário.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Credenciais inválidas.
+
+  /auth/me:
+    get:
+      tags:
+        - "Grupo 5: Autenticação & IAM"
+      summary: Retorna os dados do usuário autenticado no sistema
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Dados do perfil do usuário autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+
+  # ==========================================
+  # GRUPO 1: IoT, CLP & TELEMETRIA DA MÁQUINA
+  # ==========================================
+  /telemetry/status:
+    get:
+      tags:
+        - "Grupo 1: Telemetria & CLP"
+      summary: Estado em Tempo Real dos Sensores e Botões Físicos
+      description: Retorna o status atual do painel de controle (Start, Stop, Reset, Emergência) e velocidade das esteiras.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Telemetria atual da máquina SMART 4.0.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MachineTelemetry'
+
+  /telemetry/commands:
+    post:
+      tags:
+        - "Grupo 1: Telemetria & CLP"
+      summary: Envio de Comando Remoto ao CLP/Painel Físico
+      description: Permite acionar ou parar componentes da máquina física via comandos remotos autorizados.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MachineCommand'
+      responses:
+        '200':
+          description: Comando aceito e enviado para a borda (CLP).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandResponse'
+
+  # ==========================================
+  # GRUPO 2: ROBÔ COLABORATIVO (COBOT)
+  # ==========================================
+  /cobot/status:
+    get:
+      tags:
+        - "Grupo 2: Robô Colaborativo (Cobot)"
+      summary: Status de Telemetria e Alarme do Braço Robótico
+      description: Consulta a posição atual das juntas, estado de execução (Livre, Ocupado, Erro) e modo de segurança.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Status atualizado do Universal Robots.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CobotStatus'
+
+  /cobot/routines:
+    post:
+      tags:
+        - "Grupo 2: Robô Colaborativo (Cobot)"
+      summary: Disparo de Rotina Automática de Manipulação (Pick-and-Place)
+      description: Envia instrução para o braço robótico executar movimentação de peças na esteira ou expedição.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CobotRoutineRequest'
+      responses:
+        '202':
+          description: Rotina aceita e colocada na fila de execução do cobot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutineTaskResponse'
+
+  # ==========================================
+  # GRUPO 3: MES, RASTREABILIDADE & OEE
+  # ==========================================
+  /mes/orders:
+    get:
+      tags:
+        - "Grupo 3: MES & Rastreabilidade"
+      summary: Lista Ordens de Produção (OPs)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, RUNNING, COMPLETED, CANCELLED]
+      responses:
+        '200':
+          description: Lista de ordens de produção encontradas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductionOrder'
+
+    post:
+      tags:
+        - "Grupo 3: MES & Rastreabilidade"
+      summary: Criar e Iniciar uma Nova Ordem de Produção
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Ordem de produção criada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductionOrder'
+
+  /mes/oee/dashboard:
+    get:
+      tags:
+        - "Grupo 3: MES & Rastreabilidade"
+      summary: Métricas Industriais de OEE (Overall Equipment Effectiveness)
+      description: Retorna os índices calculados de Disponibilidade, Desempenho e Qualidade em tempo real.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Métricas OEE consolidadas da máquina.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OEEMetrics'
+
+  # ==========================================
+  # GRUPO 4: HMI DIGITAL / CONFIGURAÇÃO WEB
+  # ==========================================
+  /hmi/config:
+    get:
+      tags:
+        - "Grupo 4: HMI Digital & Front-End"
+      summary: Configurações do Painel Virtual HMI
+      description: Retorna parâmetros de layout, sinalizadores de interface e tópicos WebSocket configurados para o Front-End.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Configuração atual do painel visual.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HMIConfig'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: operador@industria40.com
+        password:
+          type: string
+          format: password
+          example: "SenhaSegura123!"
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        expires_in:
+          type: integer
+          example: 3600
+        user:
+          $ref: '#/components/schemas/UserProfile'
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "usr-001"
+        name:
+          type: string
+          example: "Ana Silva"
+        role:
+          type: string
+          enum: [OPERATOR, MAINTENANCE_ENGINEER, MANAGER]
+          example: "OPERATOR"
+
+    MachineTelemetry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-09-24T13:30:00Z"
+        system_status:
+          type: string
+          enum: [STOPPED, RUNNING, EMERGENCY_STOP, ALARM]
+          example: "RUNNING"
+        buttons:
+          type: object
+          properties:
+            start_pressed:
+              type: boolean
+              example: false
+            stop_pressed:
+              type: boolean
+              example: false
+            emergency_active:
+              type: boolean
+              example: false
+        conveyor_speed_m_s:
+          type: number
+          example: 0.45
+
+    MachineCommand:
+      type: object
+      required:
+        - command
+      properties:
+        command:
+          type: string
+          enum: [START, STOP, RESET, EMERGENCY_STOP]
+          example: "START"
+        parameters:
+          type: object
+          additionalProperties: true
+
+    CommandResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "ACCEPTED"
+        message:
+          type: string
+          example: "Comando START enviado com sucesso ao CLP Siemens."
+
+    CobotStatus:
+      type: object
+      properties:
+        robot_state:
+          type: string
+          enum: [IDLE, EXECUTING, SAFETY_STOP, ERROR]
+          example: "EXECUTING"
+        joint_positions_deg:
+          type: array
+          items:
+            type: number
+          example: [0.0, -90.0, 90.0, -90.0, -90.0, 0.0]
+        current_payload_kg:
+          type: number
+          example: 0.8
+
+    CobotRoutineRequest:
+      type: object
+      required:
+        - order_id
+        - routine_type
+      properties:
+        order_id:
+          type: string
+          example: "OP-2026-001"
+        routine_type:
+          type: string
+          enum: [PICK_AND_PLACE, PALLETIZING, INSPECTION]
+          example: "PICK_AND_PLACE"
+        speed_ratio:
+          type: number
+          example: 0.85
+
+    RoutineTaskResponse:
+      type: object
+      properties:
+        task_id:
+          type: string
+          example: "tsk-98231"
+        status:
+          type: string
+          example: "QUEUED"
+        estimated_seconds:
+          type: integer
+          example: 15
+
+    ProductionOrder:
+      type: object
+      properties:
+        order_id:
+          type: string
+          example: "OP-2026-001"
+        product_name:
+          type: string
+          example: "Peça Industrial SMART 4.0"
+        target_quantity:
+          type: integer
+          example: 100
+        produced_quantity:
+          type: integer
+          example: 42
+        status:
+          type: string
+          example: "RUNNING"
+
+    CreateOrderRequest:
+      type: object
+      required:
+        - product_name
+        - target_quantity
+      properties:
+        product_name:
+          type: string
+          example: "Peça Industrial SMART 4.0"
+        target_quantity:
+          type: integer
+          example: 100
+
+    OEEMetrics:
+      type: object
+      properties:
+        overall_oee_percentage:
+          type: number
+          example: 87.5
+        availability_percentage:
+          type: number
+          example: 92.0
+        performance_percentage:
+          type: number
+          example: 96.0
+        quality_percentage:
+          type: number
+          example: 99.1
+
+    HMIConfig:
+      type: object
+      properties:
+        refresh_rate_ms:
+          type: integer
+          example: 500
+        websocket_url:
+          type: string
+          example: "wss://api.smart40-cloud.com/ws/telemetry"
+        theme:
+          type: string
+          example: "DARK_INDUSTRIAL"

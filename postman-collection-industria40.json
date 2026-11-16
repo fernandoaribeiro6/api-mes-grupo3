@@ -1,0 +1,378 @@
+{
+  "info": {
+    "name": "Indústria 4.0 - Projeto Integrador (Aplicações Web Cloud)",
+    "_postman_id": "ind40-collection-2026-v1",
+    "description": "Coleção completa de endpoints para os 5 Grupos do Projeto Integrador da Máquina SMART 4.0.\nInclui autenticação JWT por perfil (Operador, Engenheiro, Gestor, Admin).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "token_operator",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3Jfb3BfMDEiLCJuYW1lIjoiSm9hbyBPcGVyYWRvciIsImVtYWlsIjoiam9hby5vcGVyYWRvckBmaWN0aWNpby5lZHUuYnIiLCJyb2xlIjoiT1BFUkFUT1IiLCJpYXQiOjE3OTAyODI0NDksImV4cCI6MTc5MDM2ODg0OX0.sYUHHvZqu3F1GZR-stSHpJ94iqXggtF6f2b5bosKB78",
+      "type": "string"
+    },
+    {
+      "key": "token_engineer",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3JfZW5nXzAxIiwibmFtZSI6IkNhcmxvcyBFbmdlbmhlaXJvIiwiZW1haWwiOiJjYXJsb3MuZW5nQGZpY3RpY2lvLmVkdS5iciIsInJvbGUiOiJFTkdJTkVFUiIsImlhdCI6MTc5MDI4MjQ0OSwiZXhwIjoxNzkwMzY4ODQ5fQ.1gOeqZT3M1VmWZj_9GSAdbaiGqfinvKFp4Ig-xB2j8I",
+      "type": "string"
+    },
+    {
+      "key": "token_manager",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3JfbW5ncl8wMSIsIm5hbWUiOiJBbmEgR2VzdG9yYSIsImVtYWlsIjoiYW5hLmdlc3RvcmFAZmljdGljaW8uZWR1LmJyIiwicm9sZSI6Ik1BTkFHRVIiLCJpYXQiOjE3OTAyODI0NDksImV4cCI6MTc5MDM2ODg0OX0.Fv_x5hupm1Xd7sTHO-q5GcD-M_oK8FKa5o5t8ZzGpQU",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Grupo 5 - Autenticação & IAM",
+      "item": [
+        {
+          "name": "POST Login - Gerar Token JWT",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"carlos.engenheiro\",\n  \"password\": \"senha_segura_123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Autentica o usuário e retorna o Token JWT e a role (OPERATOR, ENGINEER, MANAGER, ADMIN)."
+          }
+        },
+        {
+          "name": "GET Me - Verificar Perfil Logado",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_engineer}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Retorna o perfil e permissões do usuário associado ao token JWT."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Grupo 1 - Telemetria & CLP (IoT)",
+      "item": [
+        {
+          "name": "GET Telemetria da Máquina (Status / Botões)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_operator}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/telemetry/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "telemetry",
+                "status"
+              ]
+            },
+            "description": "Retorna o estado em tempo real dos botões (Start, Stop, Emergência) e velocidade das esteiras."
+          }
+        },
+        {
+          "name": "POST Enviar Comando Remoto ao CLP",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_operator}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"START\",\n  \"parameters\": {\n    \"conveyor_speed\": 75\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/telemetry/commands",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "telemetry",
+                "commands"
+              ]
+            },
+            "description": "Envia comando físico de Start/Stop/Reset ao painel Siemens CLP."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Grupo 2 - Robô Colaborativo (Cobot)",
+      "item": [
+        {
+          "name": "GET Status do Robô (Universal Robots)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_engineer}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cobot/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cobot",
+                "status"
+              ]
+            },
+            "description": "Retorna posição das 6 juntas, status de garra, carga e modo de segurança do cobot."
+          }
+        },
+        {
+          "name": "POST Disparar Rotina no Cobot",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_engineer}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_id\": \"OP-2026-001\",\n  \"routine_type\": \"PICK_AND_PLACE\",\n  \"speed_ratio\": 0.8,\n  \"parameters\": {\n    \"source_tray\": 1,\n    \"target_conveyor\": 2\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cobot/routines",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cobot",
+                "routines"
+              ]
+            },
+            "description": "Dispara uma rotina de automação no braço robótico (Requer permissão de ENGINEER ou ADMIN)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Grupo 3 - MES & Rastreabilidade (OEE)",
+      "item": [
+        {
+          "name": "GET Listar Ordens de Produção (OPs)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_manager}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mes/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mes",
+                "orders"
+              ]
+            },
+            "description": "Retorna o histórico e fila de Ordens de Produção."
+          }
+        },
+        {
+          "name": "POST Criar Ordem de Produção",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_manager}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_number\": \"OP-2026-001\",\n  \"product_type\": \"PECA_SMART_A\",\n  \"target_quantity\": 50\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mes/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mes",
+                "orders"
+              ]
+            },
+            "description": "Cria uma nova ordem de produção no sistema MES (Requer permissão MANAGER ou ADMIN)."
+          }
+        },
+        {
+          "name": "GET Dashboard OEE (Eficiência Industrial)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_manager}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mes/oee/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mes",
+                "oee",
+                "dashboard"
+              ]
+            },
+            "description": "Retorna métricas consolidadas de Disponibilidade, Desempenho, Qualidade e OEE global."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Grupo 4 - HMI Digital & Web Shell",
+      "item": [
+        {
+          "name": "GET Configurações da HMI Web",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_operator}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hmi/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "hmi",
+                "config"
+              ]
+            },
+            "description": "Retorna as URLs de WebSockets e temas visuais para a interface do operador."
+          }
+        }
+      ]
+    }
+  ]
+}
