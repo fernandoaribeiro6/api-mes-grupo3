@@ -11,6 +11,19 @@ app = Flask(__name__)
 # ROTAS DA API (ENDPOINTS)
 # ==========================================
 
+@app.route('/', methods=['GET'])
+def index():
+    """Rota de boas-vindas / Health check."""
+    return jsonify({
+        "status": "online",
+        "microsservico": "API MES - Grupo 3",
+        "endpoints_disponiveis": [
+            "/api/ordens (GET)",
+            "/api/oee (GET)",
+            "/api/rastreabilidade (POST)"
+        ]
+    }), 200
+
 @app.route('/api/oee', methods=['GET'])
 def api_get_oee():
     """Retorna os dados do OEE para o Dashboard (Grupo 4)."""
