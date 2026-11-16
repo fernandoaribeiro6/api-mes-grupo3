@@ -42,19 +42,20 @@ def get_active_production_orders():
         return []
 
 def update_piece_status(qr_code, estacao, status):
-    """Atualiza o estado de uma peça lida pelo Cobot."""
+    """Atualiza o estado de uma peça. Se a peça não existir, cria uma nova (Upsert)."""
     if not supabase:
         return False
     try:
-        # Equivalente a: UPDATE pieces SET estacao=?, status=? WHERE qr_code=?
-        response = supabase.table('pieces').update({
+        # O upsert cria a linha se não existir, ou atualiza se o qr_code (chave) já existir
+        response = supabase.table('pieces').upsert({
+            "qr_code": qr_code,
             "estacao": estacao, 
             "status": status
-        }).eq('qr_code', qr_code).execute()
+        }).execute()
         
         return len(response.data) > 0
     except Exception as e:
-        print(f"❌ Erro ao atualizar peça: {e}")
+        print(f"❌ Erro ao atualizar/inserir peça: {e}")
         return False
 
 # ==========================================
