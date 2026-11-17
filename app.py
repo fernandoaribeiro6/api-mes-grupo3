@@ -2,7 +2,8 @@ from flask import Flask, jsonify, request
 from db_connection import (
     get_active_production_orders,
     get_latest_oee_metrics,
-    update_piece_status
+    update_piece_status,
+    increment_active_order
 )
 
 app = Flask(__name__)
@@ -56,7 +57,12 @@ def api_atualizar_peca():
     sucesso = update_piece_status(dados["qr_code"], dados["estacao"], dados["status"])
     
     if sucesso:
-        return jsonify({"mensagem": f"Peça {dados['qr_code']} atualizada com sucesso!"}), 200
+        # Lógica de Negócio: Se a peça está aprovada, avança o progresso da produção!
+        if str(dados.get("status", "")).upper() == "APROVADA":
+            increment_active_order()
+            
+        return jsonify({"mensagem": f"Peça {dados['qr_code']} processada e produção atualizada!"}), 200
+        
     return jsonify({"erro": "Falha ao atualizar a peça no banco de dados."}), 500
 
 # ==========================================

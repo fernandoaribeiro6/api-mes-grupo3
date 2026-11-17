@@ -20,7 +20,6 @@ def get_latest_oee_metrics():
     if not supabase:
         return None
     try:
-        # Equivalente a: SELECT * FROM oee_metrics ORDER BY id DESC LIMIT 1
         response = supabase.table('oee_metrics').select('*').order('id', desc=True).limit(1).execute()
         if response.data:
             return response.data[0]
@@ -34,7 +33,6 @@ def get_active_production_orders():
     if not supabase:
         return []
     try:
-        # Equivalente a: SELECT * FROM production_orders WHERE status = 'ACTIVE'
         response = supabase.table('production_orders').select('*').eq('status', 'ACTIVE').execute()
         return response.data
     except Exception as e:
@@ -46,7 +44,6 @@ def update_piece_status(qr_code, estacao, status):
     if not supabase:
         return False
     try:
-        # O upsert cria a linha se não existir, ou atualiza se o qr_code (chave) já existir
         response = supabase.table('pieces').upsert({
             "qr_code": qr_code,
             "estacao": estacao, 
@@ -56,6 +53,33 @@ def update_piece_status(qr_code, estacao, status):
         return len(response.data) > 0
     except Exception as e:
         print(f"❌ Erro ao atualizar/inserir peça: {e}")
+        return False
+
+def increment_active_order():
+    """Procura a ordem de produção ativa e soma +1 à quantidade produzida."""
+    if not supabase:
+        return False
+    try:
+        response = supabase.table('production_orders').select('*').eq('status', 'ACTIVE').execute()
+        
+        if not response.data:
+            print("Nenhuma ordem ativa encontrada para atualizar.")
+            return False
+            
+        ordem_ativa = response.data[0]
+        id_ordem = ordem_ativa['id']
+        
+        # Adapte 'quantidade_produzida' para o nome exato da coluna no Supabase se necessário
+        qtd_atual = ordem_ativa.get('quantidade_produzida', 0) 
+        nova_qtd = qtd_atual + 1
+
+        update_resp = supabase.table('production_orders').update({
+            "quantidade_produzida": nova_qtd
+        }).eq('id', id_ordem).execute()
+
+        return len(update_resp.data) > 0
+    except Exception as e:
+        print(f"❌ Erro ao atualizar ordem de produção: {e}")
         return False
 
 # ==========================================
