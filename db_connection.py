@@ -40,16 +40,27 @@ def get_active_production_orders():
         return []
 
 def update_piece_status(qr_code, estacao, status):
-    """Atualiza o estado de uma peça. Se a peça não existir, cria uma nova (Upsert)."""
+    """Atualiza o estado de uma peça. Se a peça não existir, cria uma nova."""
     if not supabase:
         return False
     try:
-        response = supabase.table('pieces').upsert({
-            "qr_code": qr_code,
-            "estacao": estacao, 
-            "status": status
-        }).execute()
+        # 1. Verifica se a peça já existe pelo qr_code
+        verificacao = supabase.table('pieces').select('id').eq('qr_code', qr_code).execute()
         
+        if verificacao.data:
+            # Se a peça já existe, faz UPDATE
+            response = supabase.table('pieces').update({
+                "estacao": estacao, 
+                "status": status
+            }).eq('qr_code', qr_code).execute()
+        else:
+            # Se não existe, faz INSERT
+            response = supabase.table('pieces').insert({
+                "qr_code": qr_code,
+                "estacao": estacao, 
+                "status": status
+            }).execute()
+            
         return len(response.data) > 0
     except Exception as e:
         print(f"❌ Erro ao atualizar/inserir peça: {e}")
